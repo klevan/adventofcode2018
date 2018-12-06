@@ -316,7 +316,7 @@ suit = read.delim(paste(wd,'data/day-3-input.txt',sep='/'), header = F,
                   col.names = 'loc', encoding = 'UTF-8')
 ```
 
-The first thing I did was visualize the problem, using a function I wrote called `makePoly` to convert the claim format `#1 @ 1,3: 4x4` into a polygon. 
+The first thing I did was visualize the problem, using a function I wrote called `makePoly` to convert theclaim format (i.e., `#1 @ 1,3: 4x4`) into polygons. 
 
 ```{r Day 3: Create Polygons, include=T, eval=F}
 # Make a Polygon for each claim
@@ -347,6 +347,7 @@ locs = sapply(suit$loc, makePoly)
 polys = SpatialPolygons((locs))
 ```
 
+These are then graphable, for a nice visual of the problem.
 
 ```{r Day 3: Plot Polygons, include=T, eval=F}
 # Plotting the polygons
@@ -358,14 +359,13 @@ axis(1);axis(2); box()
 ```
 
 
-\pagebreak
 \begin{figure}[h]
   \centering
   \includegraphics[page=1,trim=0mm 0mm 0mm 0mm, clip]{graphics/day-3.PNG}
   \caption{Graphical representation of the problem.}
 \end{figure}
 
-Then converted each claim into a list of coordinate locations it represented, using a function I wrote called `makeList`. From there it's as simple as applying the function and getting the list of duplicate locations.
+It seemed computationally easier to just convert each claim into a list of coordinate locations it represented, using a function I wrote called `makeList`. From there it's as simple as applying the function and getting the list of duplicate locations.
 
 ```{r Day 3: Get list of duplicate claim locations, include=T, eval=F}
 # Convert each item into it's list of addresses, 
@@ -400,9 +400,10 @@ dup = unique(cor[duplicated(cor)])
 length(dup) # area of duplicate claims
 ```
 
-The area is easy to calculate by looking at the length of the list of unique names of duplicate claim locations; `length(dup)` is 111266 and the solution to the puzzle.
+The area is easy to calculate by looking at the length of the list of unique names of duplicate claim locations, since each unique swatch location is area of size 1. The `length(dup)` is 111266 and the solution to the puzzle.
 
 ## --- Part Two ---
+
 Amidst the chaos, you notice that exactly one claim doesn't overlap by even a single square inch of fabric with any other claim. If you can somehow draw attention to it, maybe the Elves will be able to make Santa's suit after all!
 
 For example, in the claims above, only claim 3 is intact after all claims are made.
@@ -422,3 +423,348 @@ for (i in 1:nrow(suit)){
 ```
 
 Revealing that claim # 266 had no overlap.
+
+## --- Day 4: Repose Record ---
+You've sneaked into another supply closet - this time, it's across from the prototype suit manufacturing lab. You need to sneak inside and fix the issues with the suit, but there's a guard stationed outside the lab, so this is as close as you can safely get.
+
+As you search the closet for anything that might help, you discover that you're not the first person to want to sneak in. Covering the walls, someone has spent an hour starting every midnight for the past few months secretly observing this guard post! They've been writing down the ID of the one guard on duty that night - the Elves seem to have decided that one guard was enough for the overnight shift - as well as when they fall asleep or wake up while at their post (your puzzle input).
+
+For example, consider the following records, which have already been organized into chronological order:
+
+[1518-11-01 00:00] Guard #10 begins shift
+[1518-11-01 00:05] falls asleep
+[1518-11-01 00:25] wakes up
+[1518-11-01 00:30] falls asleep
+[1518-11-01 00:55] wakes up
+[1518-11-01 23:58] Guard #99 begins shift
+[1518-11-02 00:40] falls asleep
+[1518-11-02 00:50] wakes up
+[1518-11-03 00:05] Guard #10 begins shift
+[1518-11-03 00:24] falls asleep
+[1518-11-03 00:29] wakes up
+[1518-11-04 00:02] Guard #99 begins shift
+[1518-11-04 00:36] falls asleep
+[1518-11-04 00:46] wakes up
+[1518-11-05 00:03] Guard #99 begins shift
+[1518-11-05 00:45] falls asleep
+[1518-11-05 00:55] wakes up
+
+Timestamps are written using year-month-day hour:minute format. The guard falling asleep or waking up is always the one whose shift most recently started. Because all asleep/awake times are during the midnight hour (00:00 - 00:59), only the minute portion (00 - 59) is relevant for those events.
+
+Visually, these records show that the guards are asleep at these times:
+
+Date   ID   Minute
+            000000000011111111112222222222333333333344444444445555555555
+            012345678901234567890123456789012345678901234567890123456789
+11-01  #10  .....####################.....#########################.....
+11-02  #99  ........................................##########..........
+11-03  #10  ........................#####...............................
+11-04  #99  ....................................##########..............
+11-05  #99  .............................................##########.....
+
+The columns are Date, which shows the month-day portion of the relevant day; ID, which shows the guard on duty that day; and Minute, which shows the minutes during which the guard was asleep within the midnight hour. (The Minute column's header shows the minute's ten's digit in the first row and the one's digit in the second row.) Awake is shown as ., and asleep is shown as #.
+
+Note that guards count as asleep on the minute they fall asleep, and they count as awake on the minute they wake up. For example, because Guard #10 wakes up at 00:25 on 1518-11-01, minute 25 is marked as awake.
+
+If you can figure out the guard most likely to be asleep at a specific time, you might be able to trick that guard into working tonight so you can have the best chance of sneaking in. You have two strategies for choosing the best guard/minute combination.
+
+Strategy 1: Find the guard that has the most minutes asleep. What minute does that guard spend asleep the most?
+
+In the example above, Guard #10 spent the most minutes asleep, a total of 50 minutes (20+25+5), while Guard #99 only slept for a total of 30 minutes (10+10+10). Guard #10 was asleep most during minute 24 (on two days, whereas any other minute the guard was asleep was only seen on one day).
+
+While this example listed the entries in chronological order, your entries are in the order you found them. You'll need to organize them before they can be analyzed.
+
+### What is the ID of the guard you chose multiplied by the minute you chose? 
+(In the above example, the answer would be 10 * 24 = 240.)
+
+I loaded the data into my session and imported a quick function to determine mode. For some reason, R has default functions for calculation of mean and median, but not mode. Mode is useful for determining which minute the guard is most commonly asleep.
+```{r Day 4: input data, include=T, eval=F}
+# Input Data
+duty = read.delim(paste(wd,'data/day-4-input.txt',sep='/'), header = F, 
+                  col.names = 'log', encoding = 'UTF-8')
+
+# Get the mode
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+```
+
+But the data are not immediately useable, with some cleanup required. First I isolated the timestamps, descriptive text and guard identifier from the duty log. Using some date handling, I was able to sort the dataset pretty easily. Relying on that ordering, I determined which records pertained to specific guards where not otherwise indicated. With that preprocessing complete, I am ready to calculate sleep time. 
+
+```{r Day 4: clean up duty log, include=T, eval=F}
+# Part 1: Find the guard that has the most minutes asleep. 
+# What minute does that guard spend asleep the most?
+
+# Clean up the duty log
+duty$date = substr(duty$log,2,17) # Split time stamps from file
+duty$info = gsub('\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}\\]',
+                 '',duty$log) # get info separate from time stamp
+duty$guardID = gsub('[A-z# ]','',duty$info) # find Guard ID from shift starts
+
+# Sort by date
+duty$date = as.POSIXct(duty$date)
+duty = duty[order(duty$date), ]
+
+# Determine guard on duty
+n = 1; glist = which(!duty$guardID%in%'')
+while (n<nrow(duty)){
+  # What's the current guard's ID?
+  gID = duty$guardID[n]
+  # When is the next shift?
+  if(which(glist%in%n)<length(glist)){
+    nxt.shift = glist[which(glist%in%n)+1] 
+    # Assign all current time stamps to current guard
+    duty$guardID[n:(nxt.shift-1)] = gID
+    
+    n = nxt.shift
+  } else {
+    duty$guardID[n:nrow(duty)] = gID
+    break
+  }
+}
+```
+
+For each guard, the difftime function will yield the time difference between two times. difftime just outputs the single value of endtime - starttime, so i separately generated a string of minutes and ran the 'getmode' function over that to determine the most prevalent minute.
+
+```{r Day 4: sleep calculation, include=T, eval=F}
+# Which guard spent the most time asleep?
+duty.summary = data.frame(guardID = unique(duty$guardID))
+for(g in 1:nrow(duty.summary)){
+  # Isolate that guard's schedule
+  sch = duty[duty$guardID%in%duty.summary$guardID[g], ]
+  sch$min = as.numeric(substr(sch$date, 15,16))
+  
+  sleep = mins = vector()
+  for(time in 1:nrow(sch)){
+    if(grepl('sleep', sch$info[time])){
+      # Amount of time sleeping
+      sleep = c(sleep, difftime(sch$date[time+1],sch$date[time], units = 'mins'))
+      mins = c(mins, sch$min[time]:((sch$min[time+1])-1))
+    }
+  }
+  
+  duty.summary$totalMinutesAsleep[g] = sum(sleep)
+  duty.summary$bestMin[g] = paste(getmode(mins), collapse = '|')
+  
+  # Use for Part 2
+  if(!is.na(duty.summary$bestMin[g])){
+    duty.summary$numInMode[g] = length(mins[mins%in%duty.summary$bestMin[g]])
+  } else {
+    duty.summary$numInMode[g] = NA
+  }
+  
+}
+```
+
+From there, the guardID * most common minute is easy, and gave me an answer of 95199.
+
+```{r Day 4: Strategy 1, include=T, eval=F}
+# What is the ID of the guard you chose multiplied by the minute you chose?
+as.numeric(duty.summary$guardID[duty.summary$totalMinutesAsleep%in%max(duty.summary$totalMinutesAsleep)])*
+  as.numeric(duty.summary$bestMin[duty.summary$totalMinutesAsleep%in%max(duty.summary$totalMinutesAsleep)])
+```
+
+
+## --- Part Two ---
+Strategy 2: Of all guards, which guard is most frequently asleep on the same minute?
+
+In the example above, Guard #99 spent minute 45 asleep more than any other guard or minute - three times in total. (In all other cases, any guard spent any minute asleep at most twice.)
+
+### What is the ID of the guard you chose multiplied by the minute you chose? 
+(In the above example, the answer would be 99 * 45 = 4455.)
+
+When iterating over the first list, I also evaluated `length(mins[mins%in%duty.summary$bestMin[g]])`; or, in other words, if the best minute is the "mode" of the data for each guard, how many instances did that minute occur for each guard? From there its just multiplying the guardID * "mode" minute, for the guard with the largest number of sleep times occuring in that minute.
+
+```{r Day 4: Strategy 2, include=T, eval=F}
+
+# Part 2: Of all guards, which guard is most frequently asleep on the same minute?
+# What is the ID of the guard you chose multiplied by the minute you chose?
+as.numeric(duty.summary$guardID[duty.summary$numInMode%in%max(duty.summary$numInMode)])*
+  as.numeric(duty.summary$bestMin[duty.summary$numInMode%in%max(duty.summary$numInMode)])
+```
+
+My puzzle answer was 7887.
+
+## --- Day 5: Alchemical Reduction ---
+You've managed to sneak in to the prototype suit manufacturing lab. The Elves are making decent progress, but are still struggling with the suit's size reduction capabilities.
+
+While the very latest in 1518 alchemical technology might have solved their problem eventually, you can do better. You scan the chemical composition of the suit's material and discover that it is formed by extremely long polymers (one of which is available as your puzzle input).
+
+The polymer is formed by smaller units which, when triggered, react with each other such that two adjacent units of the same type and opposite polarity are destroyed. Units' types are represented by letters; units' polarity is represented by capitalization. For instance, r and R are units with the same type but opposite polarity, whereas r and s are entirely different types and do not react.
+
+For example:
+
+In aA, a and A react, leaving nothing behind.
+In abBA, bB destroys itself, leaving aA. As above, this then destroys itself, leaving nothing.
+In abAB, no two adjacent units are of the same type, and so nothing happens.
+In aabAAB, even though aa and AA are of the same type, their polarities match, and so nothing happens.
+Now, consider a larger example, dabAcCaCBAcCcaDA:
+
+dabAcCaCBAcCcaDA  The first 'cC' is removed.
+dabAaCBAcCcaDA    This creates 'Aa', which is removed.
+dabCBAcCcaDA      Either 'cC' or 'Cc' are removed (the result is the same).
+dabCBAcaDA        No further actions can be taken.
+After all possible reactions, the resulting polymer contains 10 units.
+
+### How many units remain after fully reacting the polymer you scanned? 
+
+```{r Day 5: input data, include=T, eval=F}
+# Input Data
+polymer = as.character(read.delim(paste(wd,'data/day-5-input.txt',sep='/'), 
+                                  header = F, encoding = 'UTF-8'))
+```
+
+This one is pretty straightforward to do using regular expressions and substitution. The gsub() function does both, and when implemented under a while loop, i can iterate through the alphabet to assure that all valid removals have been implemented and break the loop when I've gone through the whole list without removing any additional characters.
+
+```{r Day 5: gsub removal, include=T, eval=F}
+# Part 1: How many units remain after fully reacting the polymer you scanned?
+# Setup; so we can track progress
+x = t = 1; start = nchar(polymer)
+while(x<3){
+  L = LETTERS[t]
+  l = letters[t]
+  # Remove Aa & aA, and repeat for all letters
+  polymer = gsub(paste0(L,l), '', polymer)
+  polymer = gsub(paste0(l,L), '', polymer)
+  
+  n = nchar(polymer) # is this string getting shorter?
+  print(n)
+  if(t<26){
+    t = t+1
+  } else {
+    t = 1
+    if(start>n){
+      start = n
+    } else{
+      x = x + 1
+    }
+  }
+}
+```
+
+My puzzle answer (n) was 11754.
+
+## --- Part Two ---
+Time to improve the polymer.
+
+One of the unit types is causing problems; it's preventing the polymer from collapsing as much as it should. Your goal is to figure out which unit type is causing the most problems, remove all instances of it (regardless of polarity), fully react the remaining polymer, and measure its length.
+
+For example, again using the polymer dabAcCaCBAcCcaDA from above:
+
+Removing all A/a units produces dbcCCBcCcD. Fully reacting this polymer produces dbCBcD, which has length 6.
+Removing all B/b units produces daAcCaCAcCcaDA. Fully reacting this polymer produces daCAcaDA, which has length 8.
+Removing all C/c units produces dabAaBAaDA. Fully reacting this polymer produces daDA, which has length 4.
+Removing all D/d units produces abAcCaCBAcCcaA. Fully reacting this polymer produces abCBAc, which has length 6.
+In this example, removing all C/c units was best, producing the answer 4.
+
+### What is the length of the shortest polymer you can produce by removing all units of exactly one type and fully reacting the result?
+
+This required the same implementation as before with the twist that I remove (via regex) one letter of any case before starting the process.
+
+```{r Day 5: gsub removal II, include=T, eval=F}
+# Part 2: If one letter (of both cases) were removed, 
+# which one should be removed to make the most compact polymer?
+poly = vector()
+for(alpha in LETTERS){
+  polymer = as.character(read.delim('data/day-5-input.txt', 
+                                    header = F,  encoding = 'UTF-8'))
+  polymer = gsub(paste0('[',alpha,tolower(alpha),']{1}'), '', polymer)
+  x = t = 1; start = nchar(polymer)
+  while(x<3){
+    L = LETTERS[t]
+    l = letters[t]
+    # Remove Aa & aA, and repeat for all letters
+    polymer = gsub(paste0(L,l), '', polymer)
+    polymer = gsub(paste0(l,L), '', polymer)
+    
+    n = nchar(polymer) # is this string getting shorter?
+    print(n)
+    if(t<26){
+      t = t+1
+    } else {
+      t = 1
+      if(start>n){
+        start = n
+      } else{
+        x = x + 1
+      }
+    }
+  }
+  poly = c(poly, n)
+}
+```
+
+In the end, removing the letter T to start made for the most compact list `LETTERS[which(poly%in%min(poly))]` and for me was of length 4098.
+
+# --- Day 6: Chronal Coordinates ---
+The device on your wrist beeps several times, and once again you feel like you're falling.
+
+"Situation critical," the device announces. "Destination indeterminate. Chronal interference detected. Please specify new target coordinates."
+
+The device then produces a list of coordinates (your puzzle input). Are they places it thinks are safe or dangerous? It recommends you check manual page 729. The Elves did not give you a manual.
+
+If they're dangerous, maybe you can minimize the danger by finding the coordinate that gives the largest distance from the other points.
+
+Using only the Manhattan distance, determine the area around each coordinate by counting the number of integer X,Y locations that are closest to that coordinate (and aren't tied in distance to any other coordinate).
+
+Your goal is to find the size of the largest area that isn't infinite. For example, consider the following list of coordinates:
+
+* `1, 1`
+* `1, 6`
+* `8, 3`
+* `3, 4`
+* `5, 5`
+* `8, 9`
+
+If we name these coordinates A through F, we can draw them on a grid, putting 0,0 at the top left:
+
+`..........`
+
+`.A........`
+
+`..........`
+
+`........C.`
+
+`...D......`
+
+`.....E....`
+
+`.B........`
+
+`..........`
+
+`..........`
+
+`........F.`
+
+\pagebreak
+
+This view is partial - the actual grid extends infinitely in all directions. Using the Manhattan distance, each location's closest coordinate can be determined, shown here in lowercase:
+
+`aaaaa.cccc`
+
+`aAaaa.cccc`
+
+`aaaddecccc`
+
+`aadddeccCc`
+
+`..dDdeeccc`
+
+`bb.deEeecc`
+
+`bBb.eeee..`
+
+`bbb.eeefff`
+
+`bbb.eeffff`
+
+`bbb.ffffFf`
+
+Locations shown as . are equally far from two or more coordinates, and so they don't count as being closest to any.
+
+In this example, the areas of coordinates A, B, C, and F are infinite - while not shown here, their areas extend forever outside the visible grid. However, the areas of coordinates D and E are finite: D is closest to 9 locations, and E is closest to 17 (both including the coordinate's location itself). Therefore, in this example, the size of the largest area is 17.
+
+### What is the size of the largest area that isn't infinite?
